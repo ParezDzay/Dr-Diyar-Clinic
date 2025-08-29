@@ -1,0 +1,6 @@
+streamlit
+pandas
+matplotlib
+st-gsheets-connection
+oauth2client
+fpdf
