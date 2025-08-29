@@ -87,32 +87,31 @@ def save_bookings(df):
 
 
 def push_to_sheet_append(df):
-    """Append new rows to Google Sheet (and sync CSV)."""
+    """Append new rows to Google Sheet (and sync CSV) without type issues."""
     try:
+        # Make sure all columns are strings
         df_to_push = df.fillna("").astype(str)
+
+        # Read existing data from Google Sheet
         existing_records = sheet.get_all_records()
         existing_df = pd.DataFrame(existing_records)
 
-        if not existing_df.empty:
-            new_rows = df_to_push.merge(existing_df, how="outer", indicator=True) \
-                                 .query('_merge=="left_only"') \
-                                 .drop('_merge', axis=1)
-        else:
-            new_rows = df_to_push
+        # Combine existing and new data, remove exact duplicates
+        combined_df = pd.concat([existing_df, df_to_push], ignore_index=True)
+        combined_df = combined_df.drop_duplicates()
 
-        if not new_rows.empty:
-            sheet.append_rows(new_rows.values.tolist(), value_input_option="RAW")
+        # Push combined data back to Google Sheet
+        sheet.clear()
+        sheet.update([combined_df.columns.values.tolist()] + combined_df.values.tolist())
 
-        # Sync CSV
-        updated_records = sheet.get_all_records()
-        pd.DataFrame(updated_records).to_csv(CSV_FILE, index=False)
+        # Sync CSV locally
+        combined_df.to_csv(CSV_FILE, index=False)
 
         return True
 
     except Exception as e:
         st.error(f"❌ Failed to push to Google Sheets: {e}")
         return False
-
 
 # ---------- Page Setup ----------
 st.set_page_config(page_title="Dr Diyar Clinic (Appointments)", layout="wide")
